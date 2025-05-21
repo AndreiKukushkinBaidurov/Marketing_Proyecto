@@ -1,132 +1,153 @@
 import streamlit as st
 import pandas as pd
+import seaborn as sns
+import numpy as np
 
-# Configuración de la app
-st.set_page_config(page_title="Mi primera app", page_icon=":tada:", layout="centered")
+import matplotlib.pyplot as plt
 
-# CSS personalizado
-st.markdown("""
-    <style>
-        /* Fondo de la aplicación */
-        .stApp {
-            background-color: #f5f5f5;
-        }
+# Configuración de la página
+st.set_page_config(page_title="Análisis de Campañas de Marketing", layout="wide")
 
-        /* Estilo para los encabezados */
-        h1, h2, h3 {
-            color: #4CAF50;
-            font-family: 'Arial', sans-serif;
-        }
+# Título de la aplicación
+st.title("Dashboard de Análisis de Campañas de Marketing")
 
-        /* Estilo para los textos */
-        .stText, .stMarkdown {
-            font-family: 'Verdana', sans-serif;
-            color: #333;
-        }
+# Cargar los datos
+@st.cache_data
+def load_data():
+    data = pd.read_csv(r"C:\Users\Andrei.Baidurov\Marketing_Proyecto\data\marketingcampaigns_clean.csv")
+    return data
 
-        /* Estilo para las columnas */
-        .stColumn > div {
-            background-color: #ffffff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
+try:
+    # Cargamos el dataset
+    df = load_data()
+    st.success("Datos cargados correctamente!")
+    
+    # Mostramos una muestra de los datos
+    st.subheader("Muestra de Datos")
+    st.dataframe(df.head())
+    
+    # Estadísticas básicas
+    st.subheader("Estadísticas Descriptivas")
+    st.write(df.describe())
+    
+    # Sidebar para filtros
+    st.sidebar.header("Filtros")
+    
+    # Sección de análisis de datos
+    st.header("Análisis de Datos")
+    
+    # Pestañas para visualizaciones
+    tab1, tab2, tab3, tab4 = st.tabs(["Rendimiento de Campañas", "Demografía de Clientes", "Análisis de Conversión", "Gráfico Personalizado"])
+    
+    with tab1:
+        st.subheader("Rendimiento de Campañas")
+        # Buscamos columnas relacionadas con campañas y conversiones
+        campaign_cols = [col for col in df.columns if 'campaign' in col.lower()]
+        metric_cols = [col for col in df.columns if any(x in col.lower() for x in ['conversion', 'revenue', 'sale', 'response'])]
+        
+        if campaign_cols and metric_cols:
+            campaign_col = st.selectbox("Seleccionar Columna de Campaña", campaign_cols)
+            metric_col = st.selectbox("Seleccionar Métrica de Rendimiento", metric_cols)
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            campaign_perf = df.groupby(campaign_col)[metric_col].mean().sort_values(ascending=False)
+            campaign_perf.plot(kind='bar', ax=ax)
+            plt.title(f'Promedio de {metric_col} por {campaign_col}')
+            plt.tight_layout()
+            st.pyplot(fig)
+        else:
+            st.write("No se encontraron columnas adecuadas para este análisis.")
+    
+    with tab2:
+        st.subheader("Demografía de Clientes")
+        # Buscamos columnas demográficas
+        demo_cols = [col for col in df.columns if any(x in col.lower() for x in ['age', 'gender', 'income', 'education'])]
+        
+        if demo_cols:
+            demo_col = st.selectbox("Seleccionar Variable Demográfica", demo_cols)
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            if df[demo_col].nunique() <= 10:  # Datos categóricos
+                df[demo_col].value_counts().plot(kind='pie', autopct='%1.1f%%', ax=ax)
+                plt.title(f'Distribución por {demo_col}')
+            else:  # Datos numéricos
+                sns.histplot(df[demo_col], kde=True, ax=ax)
+                plt.title(f'Distribución de {demo_col}')
+            
+            plt.tight_layout()
+            st.pyplot(fig)
+        else:
+            st.write("No se encontraron columnas demográficas.")
+    
+    with tab3:
+        st.subheader("Análisis de Conversión")
+        # Columnas para factores y objetivos
+        factor_cols = [col for col in df.columns if col not in metric_cols]
+        
+        if factor_cols and metric_cols:
+            factor_col = st.selectbox("Seleccionar Factor", factor_cols)
+            target_col = st.selectbox("Seleccionar Métrica Objetivo", metric_cols, key="target_metric")
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            if df[factor_col].nunique() <= 20:  # Evitar demasiadas categorías
+                conv_by_factor = df.groupby(factor_col)[target_col].mean().sort_values(ascending=False)
+                conv_by_factor.plot(kind='bar', ax=ax)
+                plt.title(f'Promedio de {target_col} por {factor_col}')
+                plt.tight_layout()
+                st.pyplot(fig)
+            else:
+                st.warning(f"La columna {factor_col} tiene demasiados valores únicos para visualizar.")
+        else:
+            st.write("No se encontraron columnas adecuadas para este análisis.")
+    
+    with tab4:
+        st.subheader("Gráfico Personalizado")
+        x_axis = st.selectbox("Seleccionar Eje X", df.columns)
+        y_axis = st.selectbox("Seleccionar Eje Y", df.columns)
+        chart_type = st.selectbox("Seleccionar Tipo de Gráfico", ["Dispersión", "Línea", "Barras", "Caja"])
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        if chart_type == "Dispersión":
+            plt.scatter(df[x_axis], df[y_axis])
+            plt.title(f'{y_axis} vs {x_axis}')
+        elif chart_type == "Línea":
+            sorted_data = df.sort_values(by=x_axis)
+            plt.plot(sorted_data[x_axis], sorted_data[y_axis])
+            plt.title(f'{y_axis} vs {x_axis}')
+        elif chart_type == "Barras":
+            if df[x_axis].nunique() <= 20:
+                df.groupby(x_axis)[y_axis].mean().plot(kind='bar', ax=ax)
+                plt.title(f'Promedio de {y_axis} por {x_axis}')
+            else:
+                st.warning("Demasiados valores únicos en el eje X.")
+        elif chart_type == "Caja":
+            if df[x_axis].nunique() <= 20:
+                sns.boxplot(x=x_axis, y=y_axis, data=df, ax=ax)
+                plt.title(f'Distribución de {y_axis} por {x_axis}')
+            else:
+                st.warning("Demasiados valores únicos en el eje X.")
+        
+        plt.xlabel(x_axis)
+        plt.ylabel(y_axis)
+        plt.tight_layout()
+        st.pyplot(fig)
 
-        /* Estilo para los tabs */
-        .stTabs [role="tablist"] {
-            background-color: #4CAF50;
-            border-radius: 10px;
-            padding: 10px;
-        }
+    # Matriz de correlación
+    st.header("Matriz de Correlación")
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    if len(numeric_cols) > 1:
+        corr_matrix = df[numeric_cols].corr()
+        fig, ax = plt.subplots(figsize=(10, 8))
+        sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f", ax=ax)
+        plt.title('Matriz de Correlación')
+        plt.tight_layout()
+        st.pyplot(fig)
+    else:
+        st.write("No hay suficientes columnas numéricas para el análisis de correlación.")
 
-        .stTabs [role="tab"] {
-            color: white;
-            font-weight: bold;
-        }
+except Exception as e:
+    st.error(f"Error al cargar o procesar los datos: {str(e)}")
+    st.info("Asegúrate de que el archivo 'marketingcampaigns_clean.csv' esté en el mismo directorio que este script.")
 
-        .stTabs [role="tab"]:hover {
-            background-color: #45a049;
-        }
-
-        /* Estilo para las tablas */
-        .stDataFrame {
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-
-st.title("Mi primera app")  # Título de la app
-
-# Sidebar
-st.sidebar.image("https://www.streamlit.io/images/brand/streamlit-mark-color.png", caption="Streamlit", use_container_width=True)
-st.sidebar.text("Desliza")
-
-# Tabs
-tab_1, tab_2, tab_3 = st.tabs(["Graficos", "Tablas", "Tab 3"])
-
-with tab_1:
-    st.write("Contenido del Graficos")
-    st.header("Encabezado de la app")
-    st.subheader("Subtitulo de la app")
-    st.text("Texto de la app")
-    st.markdown("Hello **mundo**")
-    st.latex(r"""a^2 + b^2 = c^2""")
-    st.code("print('Hello world')", language="python")
-    st.info("Esto es un mensaje de info")
-    st.success("Esto es un mensaje de exito")
-    st.warning("Esto es un mensaje de advertencia")
-    st.error("Esto es un mensaje de error")
-    st.exception("Esto es un mensaje de excepcion")
-
-with tab_2:
-    st.write("Contenido de las Tablas")
-    st.image("https://www.streamlit.io/images/brand/streamlit-mark-color.png", caption="Streamlit")
-    st.image("https://www.streamlit.io/images/brand/streamlit-mark-color.png", caption="Streamlit", use_container_width=True)
-    st.audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", format="audio/mp3")
-    st.video("https://www.youtube.com/watch?v=2Vv-BfVoq4g")
-
-with tab_3:
-    st.write("Contenido del Tab 3")
-    df = pd.DataFrame({
-        "Nombre": ["Juan", "Pedro", "Maria", "Ana"],
-        "Edad": [20, 30, 25, 35],
-        "Ciudad": ["Madrid", "Barcelona", "Valencia", "Sevilla"]
-    })
-    st.dataframe(df)
-
-# Columnas
-col1, col2 = st.columns(2)
-with col1:
-    st.write("Contenido de la columna 1")
-    st.image("https://www.streamlit.io/images/brand/streamlit-mark-color.png", caption="Streamlit")
-
-with col2:
-    st.write("Contenido de la columna 2")
-    st.image("https://www.streamlit.io/images/brand/streamlit-mark-color.png", caption="Streamlit")
-
-
-
-if 'contador' not in st.session_state:
-    st.session_state.contador = 0
-
-def incrementar_contador():
-    st.session_state.contador += 1     
-def decrementar_contador():
-    st.session_state.contador -= 1
-def reiniciar_contador():
-    st.session_state.contador = 0
-
-
-st.title("Contador")
-st.write("Contador: ", st.session_state.contador)
-
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.button("Incrementar", on_click=incrementar_contador) 
-with col2:
-    st.button("Decrementar", on_click=decrementar_contador)
-with col3:
-    st.button("Reiniciar", on_click=reiniciar_contador)
+    
