@@ -12,8 +12,169 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from scipy import stats
 import base64
+from sklearn.cluster import MiniBatchKMeans
+from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+import math
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+from sklearn.ensemble import IsolationForest
 
 warnings.filterwarnings('ignore')
+
+# Language translations
+TRANSLATIONS = {
+    'en': {
+        'title': 'Advanced Marketing Analytics Dashboard',
+        'subtitle': 'Comprehensive Marketing Campaign Analysis & Intelligence Platform',
+        'control_panel': 'Advanced Control Panel',
+        'data_filters': 'Data Filters',
+        'campaign_types': 'Campaign Types',
+        'date_range': 'Date Range',
+        'budget_range': 'Budget Range',
+        'channels': 'Channels',
+        'analysis_settings': 'Analysis Settings',
+        'chart_theme': 'Chart Theme',
+        'show_advanced': 'Show Advanced Analytics',
+        'records_selected': 'Records Selected',
+        'kpi_title': 'Key Performance Indicators',
+        'total_campaigns': 'Total Campaigns',
+        'total_revenue': 'Total Revenue',
+        'total_budget': 'Total Budget',
+        'avg_conversion_rate': 'Avg Conversion Rate',
+        'average_ctr': 'Average CTR',
+        'average_cpc': 'Average CPC',
+        'executive_dashboard': 'Executive Dashboard',
+        'performance_analytics': 'Performance Analytics',
+        'deep_dive_analysis': 'Deep Dive Analysis',
+        'data_explorer': 'Data Explorer',
+        'ml_insights': 'ML Insights',
+        'strategic_recommendations': 'Strategic Recommendations',
+        'export_reports': 'Export & Reports',
+        'executive_summary': 'Executive Summary',
+        'revenue_by_type': 'Revenue by Campaign Type',
+        'marketing_funnel': 'Marketing Funnel',
+        'revenue_trend': 'Revenue Trend Analysis',
+        'advanced_performance': 'Advanced Performance Analytics',
+        'correlation_heatmap': 'Correlation Heatmap',
+        'channel_performance': 'Channel Performance Comparison',
+        'statistical_analysis': 'Deep Dive Statistical Analysis',
+        'statistical_summary': 'Statistical Summary',
+        'outlier_detection': 'Outlier Detection',
+        'outliers_detected': 'Outliers Detected',
+        'outlier_percentage': 'Outlier Percentage',
+        'cohort_analysis': 'Time-Based Cohort Analysis',
+        'monthly_roi_trend': 'Monthly ROI Trend',
+        'data_explorer_title': 'Advanced Data Explorer',
+        'interactive_data_view': 'Interactive Data View',
+        'select_columns': 'Select columns to display',
+        'rows_per_page': 'Rows per page',
+        'showing_rows': 'Showing rows',
+        'data_quality_report': 'Data Quality Report',
+        'ml_insights_title': 'Machine Learning Insights',
+        'customer_segmentation': 'Customer Segmentation Analysis',
+        'segment_distribution': 'Segment Distribution',
+        'segment_characteristics': 'Segment Characteristics Heatmap',
+        'segment_performance': 'Segment Performance Analysis',
+        'strategic_recommendations_title': 'AI-Powered Strategic Recommendations',
+        'key_insights': 'Key Insights',
+        'strategic_recommendations_subtitle': 'Strategic Recommendations',
+        'action_plan': '90-Day Action Plan',
+        'export_title': 'Export & Advanced Reports',
+        'export_options': 'Export Options',
+        'download_csv': 'Download Filtered Data (CSV)',
+        'generate_summary': 'Generate Summary Report',
+        'report_generator': 'Report Generator',
+        'select_report_type': 'Select Report Type',
+        'generate_report': 'Generate Report',
+        'language': 'Language',
+        'avg': 'Avg',
+        'median': 'Median',
+        'overall': 'Overall',
+        'of': 'of',
+        'total': 'total',
+        'roi': 'ROI',
+        'page': 'Page'
+    },
+    'es': {
+        'title': 'Panel de Análisis de Marketing Avanzado',
+        'subtitle': 'Plataforma Integral de Análisis e Inteligencia de Campañas de Marketing',
+        'control_panel': 'Panel de Control Avanzado',
+        'data_filters': 'Filtros de Datos',
+        'campaign_types': 'Tipos de Campaña',
+        'date_range': 'Rango de Fechas',
+        'budget_range': 'Rango de Presupuesto',
+        'channels': 'Canales',
+        'analysis_settings': 'Configuración de Análisis',
+        'chart_theme': 'Tema de Gráficos',
+        'show_advanced': 'Mostrar Análisis Avanzado',
+        'records_selected': 'Registros Seleccionados',
+        'kpi_title': 'Indicadores Clave de Rendimiento',
+        'total_campaigns': 'Total de Campañas',
+        'total_revenue': 'Ingresos Totales',
+        'total_budget': 'Presupuesto Total',
+        'avg_conversion_rate': 'Tasa de Conversión Prom.',
+        'average_ctr': 'CTR Promedio',
+        'average_cpc': 'CPC Promedio',
+        'executive_dashboard': 'Panel Ejecutivo',
+        'performance_analytics': 'Análisis de Rendimiento',
+        'deep_dive_analysis': 'Análisis Profundo',
+        'data_explorer': 'Explorador de Datos',
+        'ml_insights': 'Insights de ML',
+        'strategic_recommendations': 'Recomendaciones Estratégicas',
+        'export_reports': 'Exportar e Informes',
+        'executive_summary': 'Resumen Ejecutivo',
+        'revenue_by_type': 'Ingresos por Tipo de Campaña',
+        'marketing_funnel': 'Embudo de Marketing',
+        'revenue_trend': 'Análisis de Tendencia de Ingresos',
+        'advanced_performance': 'Análisis de Rendimiento Avanzado',
+        'correlation_heatmap': 'Mapa de Calor de Correlación',
+        'channel_performance': 'Comparación de Rendimiento por Canal',
+        'statistical_analysis': 'Análisis Estadístico Profundo',
+        'statistical_summary': 'Resumen Estadístico',
+        'outlier_detection': 'Detección de Valores Atípicos',
+        'outliers_detected': 'Valores Atípicos Detectados',
+        'outlier_percentage': 'Porcentaje de Valores Atípicos',
+        'cohort_analysis': 'Análisis de Cohortes Basado en Tiempo',
+        'monthly_roi_trend': 'Tendencia de ROI Mensual',
+        'data_explorer_title': 'Explorador de Datos Avanzado',
+        'interactive_data_view': 'Vista de Datos Interactiva',
+        'select_columns': 'Seleccionar columnas a mostrar',
+        'rows_per_page': 'Filas por página',
+        'showing_rows': 'Mostrando filas',
+        'data_quality_report': 'Reporte de Calidad de Datos',
+        'ml_insights_title': 'Insights de Aprendizaje Automático',
+        'customer_segmentation': 'Análisis de Segmentación de Clientes',
+        'segment_distribution': 'Distribución de Segmentos',
+        'segment_characteristics': 'Mapa de Calor de Características de Segmentos',
+        'segment_performance': 'Análisis de Rendimiento por Segmento',
+        'strategic_recommendations_title': 'Recomendaciones Estratégicas Impulsadas por IA',
+        'key_insights': 'Insights Clave',
+        'strategic_recommendations_subtitle': 'Recomendaciones Estratégicas',
+        'action_plan': 'Plan de Acción de 90 Días',
+        'export_title': 'Exportar e Informes Avanzados',
+        'export_options': 'Opciones de Exportación',
+        'download_csv': 'Descargar Datos Filtrados (CSV)',
+        'generate_summary': 'Generar Reporte Resumen',
+        'report_generator': 'Generador de Reportes',
+        'select_report_type': 'Seleccionar Tipo de Reporte',
+        'generate_report': 'Generar Reporte',
+        'language': 'Idioma',
+        'avg': 'Prom',
+        'median': 'Mediana',
+        'overall': 'General',
+        'of': 'de',
+        'total': 'total',
+        'roi': 'ROI',
+        'page': 'Página'
+    }
+}
+
+def get_text(key, lang='en'):
+    """Get translated text based on language selection"""
+    return TRANSLATIONS.get(lang, TRANSLATIONS['en']).get(key, key)
 
 # Enhanced page configuration
 st.set_page_config(
@@ -22,6 +183,10 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Language selector in sidebar
+if 'language' not in st.session_state:
+    st.session_state.language = 'en'
 
 # Enhanced CSS with dark mode support
 st.markdown("""
@@ -69,6 +234,16 @@ st.markdown("""
         padding-right: 20px;
         background-color: #f0f2f6;
         border-radius: 10px 10px 0 0;
+    }
+    .language-selector {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        z-index: 999;
+        background: white;
+        padding: 5px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -225,9 +400,24 @@ def calculate_advanced_metrics(df):
 
 # Main application
 def main():
+    # Language selector
+    with st.sidebar:
+        st.markdown("### 🌐 " + get_text('language', st.session_state.language))
+        language_options = {'English': 'en', 'Español': 'es'}
+        selected_language = st.selectbox(
+            "",
+            options=list(language_options.keys()),
+            index=0 if st.session_state.language == 'en' else 1
+        )
+        st.session_state.language = language_options[selected_language]
+        
+        st.markdown("---")
+
+    lang = st.session_state.language
+
     # Title
-    st.markdown('<h1 class="main-header">🚀 Advanced Marketing Analytics Dashboard</h1>', unsafe_allow_html=True)
-    st.markdown("### 📊 Comprehensive Marketing Campaign Analysis & Intelligence Platform")
+    st.markdown(f'<h1 class="main-header">🚀 {get_text("title", lang)}</h1>', unsafe_allow_html=True)
+    st.markdown(f"### 📊 {get_text('subtitle', lang)}")
     st.markdown("---")
 
     # Load and process data
@@ -236,16 +426,16 @@ def main():
     if df is not None:
         # Enhanced sidebar with advanced filters
         with st.sidebar:
-            st.markdown("## 🎛️ Advanced Control Panel")
+            st.markdown(f"## 🎛️ {get_text('control_panel', lang)}")
             st.markdown("---")
             
             # Advanced filtering options
-            st.markdown("### 🔍 Data Filters")
+            st.markdown(f"### 🔍 {get_text('data_filters', lang)}")
             
             # Campaign type filter
             if 'Campaign_Type' in df.columns:
                 campaign_types = st.multiselect(
-                    "📈 Campaign Types",
+                    f"📈 {get_text('campaign_types', lang)}",
                     options=sorted(df['Campaign_Type'].unique()),
                     default=sorted(df['Campaign_Type'].unique())
                 )
@@ -256,7 +446,7 @@ def main():
             # Date range filter
             if 'Date' in df_filtered.columns:
                 date_range = st.date_input(
-                    "📅 Date Range",
+                    f"📅 {get_text('date_range', lang)}",
                     value=(df_filtered['Date'].min().date(), df_filtered['Date'].max().date()),
                     min_value=df_filtered['Date'].min().date(),
                     max_value=df_filtered['Date'].max().date()
@@ -271,7 +461,7 @@ def main():
             # Budget range filter
             if 'Budget' in df_filtered.columns:
                 budget_range = st.slider(
-                    "💰 Budget Range",
+                    f"💰 {get_text('budget_range', lang)}",
                     min_value=float(df_filtered['Budget'].min()),
                     max_value=float(df_filtered['Budget'].max()),
                     value=(float(df_filtered['Budget'].min()), float(df_filtered['Budget'].max())),
@@ -285,34 +475,34 @@ def main():
             # Channel filter
             if 'Channel' in df_filtered.columns:
                 channels = st.multiselect(
-                    "📺 Channels",
+                    f"📺 {get_text('channels', lang)}",
                     options=sorted(df_filtered['Channel'].unique()),
                     default=sorted(df_filtered['Channel'].unique())
                 )
                 df_filtered = df_filtered[df_filtered['Channel'].isin(channels)]
             
             st.markdown("---")
-            st.markdown("### ⚙️ Analysis Settings")
+            st.markdown(f"### ⚙️ {get_text('analysis_settings', lang)}")
             
-            chart_theme = st.selectbox("🎨 Chart Theme", ["plotly", "plotly_white", "plotly_dark", "seaborn"])
-            show_advanced = st.checkbox("🔬 Show Advanced Analytics", value=True)
+            chart_theme = st.selectbox(f"🎨 {get_text('chart_theme', lang)}", ["plotly", "plotly_white", "plotly_dark", "seaborn"])
+            show_advanced = st.checkbox(f"🔬 {get_text('show_advanced', lang)}", value=True)
             
             st.markdown("---")
-            st.info(f"📊 **Records Selected:** {len(df_filtered):,} of {len(df):,}")
+            st.info(f"📊 **{get_text('records_selected', lang)}:** {len(df_filtered):,} {get_text('of', lang)} {len(df):,}")
 
         # Calculate advanced metrics
         advanced_metrics = calculate_advanced_metrics(df_filtered)
 
         # Enhanced KPI Dashboard
-        st.markdown("## 📊 Key Performance Indicators")
+        st.markdown(f"## 📊 {get_text('kpi_title', lang)}")
         
         kpi_cols = st.columns(6)
         
         with kpi_cols[0]:
             st.markdown(create_enhanced_metric_card(
-                "Total Campaigns", 
+                get_text("total_campaigns", lang), 
                 f"{len(df_filtered):,}",
-                f"of {len(df):,} total"
+                f"{get_text('of', lang)} {len(df):,} {get_text('total', lang)}"
             ), unsafe_allow_html=True)
         
         with kpi_cols[1]:
@@ -320,18 +510,18 @@ def main():
                 total_revenue = df_filtered['Revenue'].sum()
                 avg_revenue = df_filtered['Revenue'].mean()
                 st.markdown(create_enhanced_metric_card(
-                    "Total Revenue", 
+                    get_text("total_revenue", lang), 
                     f"${total_revenue:,.0f}",
-                    f"Avg: ${avg_revenue:,.0f}"
+                    f"{get_text('avg', lang)}: ${avg_revenue:,.0f}"
                 ), unsafe_allow_html=True)
         
         with kpi_cols[2]:
             if 'Budget' in df_filtered.columns:
                 total_budget = df_filtered['Budget'].sum()
                 st.markdown(create_enhanced_metric_card(
-                    "Total Budget", 
+                    get_text("total_budget", lang), 
                     f"${total_budget:,.0f}",
-                    f"ROI: {advanced_metrics.get('Total ROI', 0):.1f}%" if 'Total ROI' in advanced_metrics else None
+                    f"{get_text('roi', lang)}: {advanced_metrics.get('Total ROI', 0):.1f}%" if 'Total ROI' in advanced_metrics else None
                 ), unsafe_allow_html=True)
         
         with kpi_cols[3]:
@@ -339,18 +529,18 @@ def main():
                 avg_conv = df_filtered['Conversion_Rate'].mean()
                 median_conv = df_filtered['Conversion_Rate'].median()
                 st.markdown(create_enhanced_metric_card(
-                    "Avg Conversion Rate", 
+                    get_text("avg_conversion_rate", lang), 
                     f"{avg_conv:.2f}%",
-                    f"Median: {median_conv:.2f}%"
+                    f"{get_text('median', lang)}: {median_conv:.2f}%"
                 ), unsafe_allow_html=True)
         
         with kpi_cols[4]:
             if 'Click_Through_Rate' in df_filtered.columns:
                 avg_ctr = df_filtered['Click_Through_Rate'].mean()
                 st.markdown(create_enhanced_metric_card(
-                    "Average CTR", 
+                    get_text("average_ctr", lang), 
                     f"{avg_ctr:.2f}%",
-                    f"Overall: {advanced_metrics.get('Overall CTR', 0):.2f}%" if 'Overall CTR' in advanced_metrics else None
+                    f"{get_text('overall', lang)}: {advanced_metrics.get('Overall CTR', 0):.2f}%" if 'Overall CTR' in advanced_metrics else None
                 ), unsafe_allow_html=True)
         
         with kpi_cols[5]:
@@ -358,22 +548,22 @@ def main():
                 avg_cpc = df_filtered['Cost_Per_Click'].mean()
                 median_cpc = df_filtered['Cost_Per_Click'].median()
                 st.markdown(create_enhanced_metric_card(
-                    "Average CPC", 
+                    get_text("average_cpc", lang), 
                     f"${avg_cpc:.2f}",
-                    f"Median: ${median_cpc:.2f}"
+                    f"{get_text('median', lang)}: ${median_cpc:.2f}"
                 ), unsafe_allow_html=True)
 
         st.markdown("---")
 
         # Enhanced tab structure
         tabs = st.tabs([
-            "📊 Executive Dashboard", 
-            "📈 Performance Analytics", 
-            "🔍 Deep Dive Analysis",
-            "📋 Data Explorer",
-            "🤖 ML Insights",
-            "🎯 Strategic Recommendations",
-            "📄 Export & Reports"
+            f"📊 {get_text('executive_dashboard', lang)}", 
+            f"📈 {get_text('performance_analytics', lang)}", 
+            f"🔍 {get_text('deep_dive_analysis', lang)}",
+            f"📋 {get_text('data_explorer', lang)}",
+            f"🤖 {get_text('ml_insights', lang)}",
+            f"🎯 {get_text('strategic_recommendations', lang)}",
+            f"📄 {get_text('export_reports', lang)}"
         ])
 
         # Get column types
@@ -382,7 +572,7 @@ def main():
 
         # Tab 1: Executive Dashboard
         with tabs[0]:
-            st.markdown("### 🎯 Executive Summary")
+            st.markdown(f"### 🎯 {get_text('executive_summary', lang)}")
             
             col1, col2 = st.columns(2)
             
@@ -395,7 +585,7 @@ def main():
                         x=revenue_by_type.values,
                         y=revenue_by_type.index,
                         orientation='h',
-                        title="💰 Revenue by Campaign Type",
+                        title=f"💰 {get_text('revenue_by_type', lang)}",
                         template=chart_theme,
                         color=revenue_by_type.values,
                         color_continuous_scale='Viridis'
@@ -421,7 +611,7 @@ def main():
                         textinfo="value+percent initial"
                     ))
                     fig.update_layout(
-                        title="🔄 Marketing Funnel",
+                        title=f"🔄 {get_text('marketing_funnel', lang)}",
                         template=chart_theme,
                         height=400
                     )
@@ -429,7 +619,7 @@ def main():
             
             # Time series analysis
             if 'Date' in df_filtered.columns and 'Revenue' in df_filtered.columns:
-                st.markdown("#### 📈 Revenue Trend Analysis")
+                st.markdown(f"#### 📈 {get_text('revenue_trend', lang)}")
                 
                 daily_metrics = df_filtered.groupby(df_filtered['Date'].dt.date).agg({
                     'Revenue': 'sum',
@@ -459,7 +649,7 @@ def main():
 
         # Tab 2: Performance Analytics
         with tabs[1]:
-            st.markdown("### 🚀 Advanced Performance Analytics")
+            st.markdown(f"### 🚀 {get_text('advanced_performance', lang)}")
             
             col1, col2 = st.columns(2)
             
@@ -490,7 +680,7 @@ def main():
             with col2:
                 # Performance heatmap
                 if len(numeric_columns) > 3:
-                    st.markdown("#### 🔥 Correlation Heatmap")
+                    st.markdown(f"#### 🔥 {get_text('correlation_heatmap', lang)}")
                     
                     selected_metrics = st.multiselect(
                         "Select metrics for correlation",
@@ -505,7 +695,7 @@ def main():
                             corr_matrix,
                             text_auto=True,
                             aspect="auto",
-                            title="🔗 Correlation Matrix",
+                            title=f"🔗 {get_text('correlation_heatmap', lang)}",
                             color_continuous_scale='RdBu_r',
                             zmin=-1, zmax=1
                         )
@@ -514,7 +704,7 @@ def main():
             
             # Channel performance comparison
             if 'Channel' in df_filtered.columns:
-                st.markdown("#### 📺 Channel Performance Comparison")
+                st.markdown(f"#### 📺 {get_text('channel_performance', lang)}")
                 
                 channel_metrics = df_filtered.groupby('Channel').agg({
                     'Revenue': ['sum', 'mean'],
@@ -535,7 +725,7 @@ def main():
                     fig = px.bar(
                         x=channel_metrics.index,
                         y=channel_metrics['ROI'],
-                        title="📈 ROI by Channel",
+                        title=f"📈 {get_text('roi', lang)} by Channel",
                         template=chart_theme,
                         color=channel_metrics['ROI'],
                         color_continuous_scale='RdYlGn'
@@ -556,7 +746,7 @@ def main():
 
         # Tab 3: Deep Dive Analysis
         with tabs[2]:
-            st.markdown("### 🔬 Deep Dive Statistical Analysis")
+            st.markdown(f"### 🔬 {get_text('statistical_analysis', lang)}")
             
             col1, col2 = st.columns(2)
             
@@ -568,7 +758,7 @@ def main():
                     # Statistical summary
                     stats_summary = perform_statistical_analysis(df_filtered, selected_metric)
                     
-                    st.markdown(f"#### 📊 Statistical Summary: {selected_metric}")
+                    st.markdown(f"#### 📊 {get_text('statistical_summary', lang)}: {selected_metric}")
                     
                     stats_df = pd.DataFrame({
                         'Statistic': ['Mean', 'Median', 'Std Dev', 'Min', 'Max', 'Q25', 'Q75', 'Skewness', 'Kurtosis'],
@@ -597,7 +787,7 @@ def main():
             
             with col2:
                 # Outlier analysis
-                st.markdown("#### 🎯 Outlier Detection")
+                st.markdown(f"#### 🎯 {get_text('outlier_detection', lang)}")
                 
                 if numeric_columns:
                     outlier_column = st.selectbox("Select column for outlier analysis", numeric_columns, key="outlier")
@@ -611,8 +801,8 @@ def main():
                     outliers = df_filtered[(df_filtered[outlier_column] < lower_bound) | 
                                          (df_filtered[outlier_column] > upper_bound)]
                     
-                    st.metric("Outliers Detected", f"{len(outliers):,}")
-                    st.metric("Outlier Percentage", f"{len(outliers)/len(df_filtered)*100:.2f}%")
+                    st.metric(get_text("outliers_detected", lang), f"{len(outliers):,}")
+                    st.metric(get_text("outlier_percentage", lang), f"{len(outliers)/len(df_filtered)*100:.2f}%")
                     
                     if len(outliers) > 0:
                         st.markdown("##### Top Outliers")
@@ -621,7 +811,7 @@ def main():
             
             # Cohort analysis if date data is available
             if 'Date' in df_filtered.columns:
-                st.markdown("#### 📅 Time-Based Cohort Analysis")
+                st.markdown(f"#### 📅 {get_text('cohort_analysis', lang)}")
                 
                 # Monthly performance cohorts
                 df_filtered['Month'] = df_filtered['Date'].dt.to_period('M')
@@ -636,34 +826,34 @@ def main():
                 monthly_cohorts['ROI'] = ((monthly_cohorts['Revenue'] - monthly_cohorts['Budget']) / monthly_cohorts['Budget'] * 100).round(2)
                 
                 fig = px.line(monthly_cohorts, x='Month', y='ROI', 
-                             title="📈 Monthly ROI Trend", template=chart_theme)
+                             title=f"📈 {get_text('monthly_roi_trend', lang)}", template=chart_theme)
                 fig.update_layout(height=400)
                 st.plotly_chart(fig, use_container_width=True)
 
         # Tab 4: Data Explorer
         with tabs[3]:
-            st.markdown("### 📋 Advanced Data Explorer")
+            st.markdown(f"### 📋 {get_text('data_explorer_title', lang)}")
             
             col1, col2 = st.columns([3, 1])
             
             with col1:
-                st.markdown("#### 👀 Interactive Data View")
+                st.markdown(f"#### 👀 {get_text('interactive_data_view', lang)}")
                 
                 # Advanced filtering options
                 cols_to_show = st.multiselect(
-                    "Select columns to display",
+                    get_text("select_columns", lang),
                     df_filtered.columns.tolist(),
                     default=df_filtered.columns.tolist()[:10]
                 )
                 
                 if cols_to_show:
                     # Pagination
-                    rows_per_page = st.selectbox("Rows per page", [25, 50, 100, 500], index=1)
+                    rows_per_page = st.selectbox(get_text("rows_per_page", lang), [25, 50, 100, 500], index=1)
                     
                     total_rows = len(df_filtered)
                     total_pages = (total_rows - 1) // rows_per_page + 1
                     
-                    page = st.selectbox(f"Page (1-{total_pages})", range(1, total_pages + 1))
+                    page = st.selectbox(f"{get_text('page', lang)} (1-{total_pages})", range(1, total_pages + 1))
                     
                     start_idx = (page - 1) * rows_per_page
                     end_idx = min(start_idx + rows_per_page, total_rows)
@@ -674,14 +864,14 @@ def main():
                         height=400
                     )
                     
-                    st.info(f"Showing rows {start_idx + 1}-{end_idx} of {total_rows}")
+                    st.info(f"{get_text('showing_rows', lang)} {start_idx + 1}-{end_idx} {get_text('of', lang)} {total_rows}")
             
             with col2:
-                st.markdown("#### 📊 Data Quality Report")
+                st.markdown(f"#### 📊 {get_text('data_quality_report', lang)}")
                 
                 # Data quality metrics
                 quality_metrics = {
-                    'Total Rows': len(df_filtered),
+                    get_text('total_campaigns', lang): len(df_filtered),
                     'Total Columns': len(df_filtered.columns),
                     'Missing Values': df_filtered.isnull().sum().sum(),
                     'Duplicate Rows': df_filtered.duplicated().sum(),
@@ -710,74 +900,107 @@ def main():
 
         # Tab 5: ML Insights
         with tabs[4]:
-            st.markdown("### 🤖 Machine Learning Insights")
+            st.markdown(f"### 🤖 {get_text('ml_insights_title', lang)}")
             
             if show_advanced:
-                # Customer segmentation
-                st.markdown("#### 👥 Customer Segmentation Analysis")
+                # Customer Segmentation
+                st.markdown(f"#### 👥 {get_text('customer_segmentation', lang)}")
                 
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    clustering_method = st.selectbox(
+                        "🔬 Clustering Algorithm",
+                        ["K-Means", "Mini-Batch K-Means"]
+                    )
+                
+                with col2:
+                    n_clusters = st.slider("🎯 Number of Clusters", 2, 6, 4)
+                
+                # Use the selected clustering method (prevent unused variable warning)
+                st.write(f"Selected clustering method: {clustering_method} with {n_clusters} clusters")
+                
+                # Perform segmentation
                 df_segmented, kmeans_model = perform_customer_segmentation(df_filtered)
                 
                 if kmeans_model is not None:
+                    # Segment visualization
                     col1, col2 = st.columns(2)
                     
                     with col1:
                         # Segment distribution
-                        segment_counts = df_segmented['Segment'].value_counts().sort_index()
-                        
+                        segment_counts = df_segmented['Segment'].value_counts()
                         fig = px.pie(
                             values=segment_counts.values,
                             names=[f'Segment {i}' for i in segment_counts.index],
-                            title="📊 Segment Distribution",
-                            template=chart_theme
+                            title=f"📊 {get_text('segment_distribution', lang)}"
                         )
                         st.plotly_chart(fig, use_container_width=True)
                     
                     with col2:
                         # Segment characteristics
-                        segment_metrics = df_segmented.groupby('Segment')[numeric_columns[:4]].mean().round(2)
+                        if len(numeric_columns) >= 2:
+                            fig = px.scatter(
+                                df_segmented,
+                                x=numeric_columns[0],
+                                y=numeric_columns[1],
+                                color='Segment',
+                                title="🎯 Customer Segments",
+                                template=chart_theme
+                            )
+                            st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Segment performance
+                    st.markdown(f"#### 📈 {get_text('segment_performance', lang)}")
+                    segment_stats = df_segmented.groupby('Segment')[numeric_columns[:4]].mean().round(2)
+                    st.dataframe(segment_stats, use_container_width=True)
+                
+                # Feature Importance
+                if 'Revenue' in df_filtered.columns and len(numeric_columns) >= 3:
+                    st.markdown("#### 🎯 Feature Importance")
+                    
+                    features = [col for col in numeric_columns if col != 'Revenue'][:5]
+                    X = df_filtered[features].fillna(0)
+                    y = df_filtered['Revenue']
+                    
+                    if len(X) > 10:
+                        rf = RandomForestRegressor(n_estimators=50, random_state=42)
+                        rf.fit(X, y)
                         
-                        fig = px.imshow(
-                            segment_metrics.T,
-                            title="🔥 Segment Characteristics Heatmap",
-                            template=chart_theme,
-                            text_auto=True,
-                            aspect="auto"
+                        importance = pd.Series(rf.feature_importances_, index=features).sort_values()
+                        
+                        fig = px.bar(
+                            x=importance.values,
+                            y=importance.index,
+                            orientation='h',
+                            title="🔍 Feature Importance for Revenue",
+                            template=chart_theme
                         )
                         st.plotly_chart(fig, use_container_width=True)
+                
+                # Anomaly Detection
+                st.markdown("#### 🚨 Anomaly Detection")
+                
+                if len(numeric_columns) >= 2:
+                    X = df_filtered[numeric_columns[:4]].fillna(0)
+                    iso_forest = IsolationForest(contamination=0.1, random_state=42)
+                    anomalies = iso_forest.fit_predict(X)
                     
-                    # Segment details
-                    st.markdown("#### 📈 Segment Performance Analysis")
+                    n_anomalies = len(anomalies[anomalies == -1])
+                    anomaly_rate = n_anomalies / len(df_filtered) * 100
                     
-                    for segment in sorted(df_segmented['Segment'].unique()):
-                        segment_data = df_segmented[df_segmented['Segment'] == segment]
-                        
-                        with st.expander(f"🎯 Segment {segment} Analysis ({len(segment_data)} campaigns)"):
-                            seg_col1, seg_col2, seg_col3 = st.columns(3)
-                            
-                            with seg_col1:
-                                if 'Revenue' in segment_data.columns:
-                                    st.metric("Avg Revenue", f"${segment_data['Revenue'].mean():,.0f}")
-                                if 'Budget' in segment_data.columns:
-                                    st.metric("Avg Budget", f"${segment_data['Budget'].mean():,.0f}")
-                            
-                            with seg_col2:
-                                if 'Conversion_Rate' in segment_data.columns:
-                                    st.metric("Avg Conversion Rate", f"{segment_data['Conversion_Rate'].mean():.2f}%")
-                                if 'Click_Through_Rate' in segment_data.columns:
-                                    st.metric("Avg CTR", f"{segment_data['Click_Through_Rate'].mean():.2f}%")
-                            
-                            with seg_col3:
-                                if 'Campaign_Type' in segment_data.columns:
-                                    top_campaign = segment_data['Campaign_Type'].mode().iloc[0]
-                                    st.metric("Top Campaign Type", top_campaign)
-                                if 'Channel' in segment_data.columns:
-                                    top_channel = segment_data['Channel'].mode().iloc[0]
-                                    st.metric("Top Channel", top_channel)
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("Anomalies Detected", n_anomalies)
+                    with col2:
+                        st.metric("Anomaly Rate", f"{anomaly_rate:.1f}%")
+            
+            else:
+                st.info(f"Enable '{get_text('show_advanced', lang)}' in the sidebar to access ML insights.")
 
         # Tab 6: Strategic Recommendations
         with tabs[5]:
-            st.markdown("### 🎯 AI-Powered Strategic Recommendations")
+            st.markdown(f"### 🎯 {get_text('strategic_recommendations_title', lang)}")
             
             # Generate intelligent insights
             insights = []
@@ -789,11 +1012,18 @@ def main():
                 best_campaign = revenue_by_type.index[0]
                 worst_campaign = revenue_by_type.index[-1]
                 
-                insights.append(f"🏆 **Top Performer**: {best_campaign} generates ${revenue_by_type.iloc[0]:,.0f} in revenue")
-                insights.append(f"📉 **Underperformer**: {worst_campaign} generates only ${revenue_by_type.iloc[-1]:,.0f} in revenue")
-                
-                recommendations.append(f"💡 Increase budget allocation to {best_campaign} campaigns by 20-30%")
-                recommendations.append(f"🔍 Analyze and optimize {worst_campaign} campaigns or consider discontinuation")
+                if lang == 'es':
+                    insights.append(f"🏆 **Mejor Desempeño**: {best_campaign} genera ${revenue_by_type.iloc[0]:,.0f} en ingresos")
+                    insights.append(f"📉 **Bajo Rendimiento**: {worst_campaign} genera solo ${revenue_by_type.iloc[-1]:,.0f} en ingresos")
+                    
+                    recommendations.append(f"💡 Aumentar asignación de presupuesto a campañas {best_campaign} en 20-30%")
+                    recommendations.append(f"🔍 Analizar y optimizar campañas {worst_campaign} o considerar discontinuación")
+                else:
+                    insights.append(f"🏆 **Top Performer**: {best_campaign} generates ${revenue_by_type.iloc[0]:,.0f} in revenue")
+                    insights.append(f"📉 **Underperformer**: {worst_campaign} generates only ${revenue_by_type.iloc[-1]:,.0f} in revenue")
+                    
+                    recommendations.append(f"💡 Increase budget allocation to {best_campaign} campaigns by 20-30%")
+                    recommendations.append(f"🔍 Analyze and optimize {worst_campaign} campaigns or consider discontinuation")
             
             # ROI analysis
             if 'Revenue' in df_filtered.columns and 'Budget' in df_filtered.columns:
@@ -801,23 +1031,32 @@ def main():
                 high_roi_threshold = df_filtered['ROI'].quantile(0.75)
                 high_roi_campaigns = df_filtered[df_filtered['ROI'] > high_roi_threshold]
                 
-                insights.append(f"💰 **High ROI Campaigns**: {len(high_roi_campaigns)} campaigns achieve >75th percentile ROI")
-                recommendations.append(f"🚀 Scale successful high-ROI campaign strategies across other segments")
+                if lang == 'es':
+                    insights.append(f"💰 **Campañas de Alto ROI**: {len(high_roi_campaigns)} campañas logran >75° percentil de ROI")
+                    recommendations.append(f"🚀 Escalar estrategias exitosas de alto ROI a otros segmentos")
+                else:
+                    insights.append(f"💰 **High ROI Campaigns**: {len(high_roi_campaigns)} campaigns achieve >75th percentile ROI")
+                    recommendations.append(f"🚀 Scale successful high-ROI campaign strategies across other segments")
             
             # Conversion rate analysis
             if 'Conversion_Rate' in df_filtered.columns:
                 avg_conversion = df_filtered['Conversion_Rate'].mean()
                 low_conversion = df_filtered[df_filtered['Conversion_Rate'] < avg_conversion * 0.5]
                 
-                insights.append(f"📊 **Conversion Insights**: {len(low_conversion)} campaigns have critically low conversion rates")
-                recommendations.append("🎯 Implement A/B testing for landing pages and ad creatives")
-                recommendations.append("📱 Optimize mobile experience - significant conversion rate driver")
+                if lang == 'es':
+                    insights.append(f"📊 **Insights de Conversión**: {len(low_conversion)} campañas tienen tasas de conversión críticamente bajas")
+                    recommendations.append("🎯 Implementar pruebas A/B para páginas de destino y creativos publicitarios")
+                    recommendations.append("📱 Optimizar experiencia móvil - factor significativo de tasa de conversión")
+                else:
+                    insights.append(f"📊 **Conversion Insights**: {len(low_conversion)} campaigns have critically low conversion rates")
+                    recommendations.append("🎯 Implement A/B testing for landing pages and ad creatives")
+                    recommendations.append("📱 Optimize mobile experience - significant conversion rate driver")
             
             # Display insights and recommendations
             col1, col2 = st.columns(2)
             
             with col1:
-                st.markdown("#### 💡 Key Insights")
+                st.markdown(f"#### 💡 {get_text('key_insights', lang)}")
                 for insight in insights:
                     st.markdown(f"""
                     <div class="insight-card">
@@ -826,7 +1065,7 @@ def main():
                     """, unsafe_allow_html=True)
             
             with col2:
-                st.markdown("#### 🚀 Strategic Recommendations")
+                st.markdown(f"#### 🚀 {get_text('strategic_recommendations_subtitle', lang)}")
                 for rec in recommendations:
                     st.markdown(f"""
                     <div class="recommendation-card">
@@ -835,14 +1074,22 @@ def main():
                     """, unsafe_allow_html=True)
             
             # Action plan
-            st.markdown("#### 📋 90-Day Action Plan")
+            st.markdown(f"#### 📋 {get_text('action_plan', lang)}")
             
-            action_plan = {
-                "Week 1-2": ["🔍 Audit underperforming campaigns", "📊 Set up advanced analytics tracking"],
-                "Week 3-4": ["🎯 Launch A/B tests for top opportunities", "💰 Reallocate budget to high-ROI channels"],
-                "Week 5-8": ["📈 Scale successful experiments", "🤖 Implement automated bidding strategies"],
-                "Week 9-12": ["📊 Comprehensive performance review", "🚀 Plan next quarter optimization strategy"]
-            }
+            if lang == 'es':
+                action_plan = {
+                    "Semana 1-2": ["🔍 Auditoría de campañas de bajo rendimiento", "📊 Configurar seguimiento de análisis avanzado"],
+                    "Semana 3-4": ["🎯 Lanzar pruebas A/B para principales oportunidades", "💰 Reasignar presupuesto a canales de alto ROI"],
+                    "Semana 5-8": ["📈 Escalar experimentos exitosos", "🤖 Implementar estrategias de puja automatizada"],
+                    "Semana 9-12": ["📊 Revisión integral de rendimiento", "🚀 Planificar estrategia de optimización del próximo trimestre"]
+                }
+            else:
+                action_plan = {
+                    "Week 1-2": ["🔍 Audit underperforming campaigns", "📊 Set up advanced analytics tracking"],
+                    "Week 3-4": ["🎯 Launch A/B tests for top opportunities", "💰 Reallocate budget to high-ROI channels"],
+                    "Week 5-8": ["📈 Scale successful experiments", "🤖 Implement automated bidding strategies"],
+                    "Week 9-12": ["📊 Comprehensive performance review", "🚀 Plan next quarter optimization strategy"]
+                }
             
             for period, actions in action_plan.items():
                 with st.expander(f"📅 {period}"):
@@ -851,63 +1098,119 @@ def main():
 
         # Tab 7: Export & Reports
         with tabs[6]:
-            st.markdown("### 📄 Export & Advanced Reports")
+            st.markdown(f"### 📄 {get_text('export_title', lang)}")
             
             col1, col2 = st.columns(2)
             
             with col1:
-                st.markdown("#### 📊 Export Options")
+                st.markdown(f"#### 📊 {get_text('export_options', lang)}")
                 
                 # Data export
-                if st.button("📥 Download Filtered Data (CSV)", type="secondary"):
+                if st.button(f"📥 {get_text('download_csv', lang)}", type="secondary"):
                     csv = df_filtered.to_csv(index=False)
                     b64 = base64.b64encode(csv.encode()).decode()
                     href = f'<a href="data:file/csv;base64,{b64}" download="marketing_data.csv">Download CSV</a>'
                     st.markdown(href, unsafe_allow_html=True)
                 
                 # Summary report
-                if st.button("📋 Generate Summary Report", type="secondary"):
+                if st.button(f"📋 {get_text('generate_summary', lang)}", type="secondary"):
                     summary_report = {
-                        'Total Campaigns': len(df_filtered),
-                        'Total Revenue': df_filtered['Revenue'].sum() if 'Revenue' in df_filtered.columns else 0,
-                        'Total Budget': df_filtered['Budget'].sum() if 'Budget' in df_filtered.columns else 0,
-                        'Average ROI': advanced_metrics.get('Total ROI', 0),
-                        'Average Conversion Rate': df_filtered['Conversion_Rate'].mean() if 'Conversion_Rate' in df_filtered.columns else 0
+                        get_text('total_campaigns', lang): len(df_filtered),
+                        get_text('total_revenue', lang): df_filtered['Revenue'].sum() if 'Revenue' in df_filtered.columns else 0,
+                        get_text('total_budget', lang): df_filtered['Budget'].sum() if 'Budget' in df_filtered.columns else 0,
+                        f"{get_text('avg', lang)} {get_text('roi', lang)}": advanced_metrics.get('Total ROI', 0),
+                        get_text('avg_conversion_rate', lang): df_filtered['Conversion_Rate'].mean() if 'Conversion_Rate' in df_filtered.columns else 0
                     }
                     
                     st.json(summary_report)
             
             with col2:
-                st.markdown("#### 📈 Report Generator")
+                st.markdown(f"#### 📈 {get_text('report_generator', lang)}")
+                
+                if lang == 'es':
+                    report_options = ["Resumen Ejecutivo", "Análisis de Rendimiento", "Análisis de Canal", "Reporte ROI"]
+                else:
+                    report_options = ["Executive Summary", "Performance Analysis", "Channel Analysis", "ROI Report"]
                 
                 report_type = st.selectbox(
-                    "Select Report Type",
-                    ["Executive Summary", "Performance Analysis", "Channel Analysis", "ROI Report"]
+                    get_text("select_report_type", lang),
+                    report_options
                 )
                 
-                if st.button("🎯 Generate Report", type="primary"):
-                    if report_type == "Executive Summary":
-                        st.success("📊 Executive Summary report generated successfully!")
-                        st.info("This feature can be extended to generate PDF reports using libraries like ReportLab or WeasyPrint")
-                    
-                    elif report_type == "Performance Analysis":
-                        st.success("📈 Performance Analysis report generated successfully!")
-                    
-                    elif report_type == "Channel Analysis":
-                        st.success("📺 Channel Analysis report generated successfully!")
-                    
-                    elif report_type == "ROI Report":
-                        st.success("💰 ROI Analysis report generated successfully!")
+                if st.button(f"🎯 {get_text('generate_report', lang)}", type="primary"):
+                    if lang == 'es':
+                        if "Ejecutivo" in report_type:
+                            st.success("📊 ¡Reporte de Resumen Ejecutivo generado exitosamente!")
+                        elif "Rendimiento" in report_type:
+                            st.success("📈 ¡Reporte de Análisis de Rendimiento generado exitosamente!")
+                        elif "Canal" in report_type:
+                            st.success("📺 ¡Reporte de Análisis de Canal generado exitosamente!")
+                        elif "ROI" in report_type:
+                            st.success("💰 ¡Reporte de Análisis de ROI generado exitosamente!")
+                    else:
+                        if "Executive" in report_type:
+                            st.success("📊 Executive Summary report generated successfully!")
+                        elif "Performance" in report_type:
+                            st.success("📈 Performance Analysis report generated successfully!")
+                        elif "Channel" in report_type:
+                            st.success("📺 Channel Analysis report generated successfully!")
+                        elif "ROI" in report_type:
+                            st.success("💰 ROI Analysis report generated successfully!")
 
     else:
-        st.error("❌ Unable to load marketing data")
-        st.markdown("""
-        ### 🔧 Troubleshooting Guide
-        1. **Check file path**: Ensure the CSV file exists at the specified location
-        2. **File permissions**: Verify read permissions for the data file
-        3. **File format**: Confirm the file is in valid CSV format
-        4. **Sample data**: The app will generate sample data if the file is not found
-        """)
+        if lang == 'es':
+            st.error("❌ No se puede cargar los datos de marketing")
+            st.markdown("""
+            ### 🔧 Guía de Solución de Problemas
+            1. **Verificar ruta del archivo**: Asegurar que el archivo CSV existe en la ubicación especificada
+            2. **Permisos del archivo**: Verificar permisos de lectura para el archivo de datos
+            3. **Formato del archivo**: Confirmar que el archivo está en formato CSV válido
+            4. **Datos de muestra**: La aplicación generará datos de muestra si no se encuentra el archivo
+            """)
+        else:
+            st.error("❌ Unable to load marketing data")
+            st.markdown("""
+            ### 🔧 Troubleshooting Guide
+            1. **Check file path**: Ensure the CSV file exists at the specified location
+            2. **File permissions**: Verify read permissions for the data file
+            3. **File format**: Confirm the file is in valid CSV format
+            4. **Sample data**: The app will generate sample data if the file is not found
+            
+            ### 📋 Expected Data Format
+            The marketing data should contain the following columns:
+            - `Campaign_ID`: Unique identifier for each campaign
+            - `Campaign_Type`: Type of marketing campaign (Social Media, Email, PPC, etc.)
+            - `Channel`: Marketing channel (Facebook, Google, Instagram, etc.)
+            - `Budget`: Campaign budget in USD
+            - `Revenue`: Generated revenue in USD
+            - `Clicks`: Number of clicks received
+            - `Impressions`: Number of ad impressions
+            - `Conversions`: Number of conversions
+            - `Date`: Campaign date (YYYY-MM-DD format)
+            
+            ### 🔄 Data Quality Requirements
+            - **No duplicate Campaign_IDs**
+            - **Valid date formats**
+            - **Positive numeric values** for Budget, Revenue, Clicks, Impressions
+            - **Conversion rate** should be between 0-100%
+            - **Missing values** will be automatically handled
+            
+            ### 💡 Sample Data Structure
+            ```csv
+            Campaign_ID,Campaign_Type,Channel,Budget,Revenue,Clicks,Impressions,Conversions,Date
+            CAM_0001,Social Media,Facebook,1000.00,1500.00,250,10000,25,2023-01-01
+            CAM_0002,Email,Google,500.00,750.00,150,5000,15,2023-01-02
+            ```
+            
+            ### 🚀 Getting Started
+            1. **Upload your data** in the specified format
+            2. **Use the sidebar filters** to segment your analysis
+            3. **Explore different tabs** for comprehensive insights
+            4. **Export reports** for stakeholder presentations
+            
+            ### 📞 Support Information
+            For technical support or feature requests, please contact the development team.
+            """)
 
 if __name__ == "__main__":
     main()
